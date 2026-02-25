@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vault Kicks — Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #b71c1c 0%, #c62828 50%, #d32f2f 100%); min-height: 100vh; display: flex; justify-content: center; padding: 20px 0; }
+    .card { background: #fff; border-radius: 16px; padding: 28px 22px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); width: 420px; margin: 10px; align-self: flex-start; }
+    .logo { font-size: 2rem; text-align: center; margin-bottom: 4px; }
+    h2 { color: #b71c1c; margin-bottom: 4px; font-size: 1.2rem; text-align: center; }
+    .subtitle { color: #888; font-size: 0.78rem; margin-bottom: 18px; text-align: center; }
+
+    .tabs { display: flex; gap: 3px; margin-bottom: 16px; background: #f0f4f8; border-radius: 10px; padding: 4px; }
+    .tab { flex: 1; padding: 8px 4px; border: none; border-radius: 7px; font-size: 0.72rem; font-weight: 700; cursor: pointer; background: transparent; color: #666; transition: all 0.2s; }
+    .tab.active { background: #b71c1c; color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    input, select { width: 100%; padding: 10px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; font-family: inherit; }
+    input:focus, select:focus { outline: none; border-color: #b71c1c; }
+    button { width: 100%; padding: 11px; border: none; border-radius: 10px; font-size: 0.9rem; cursor: pointer; margin-bottom: 8px; font-weight: 700; transition: all 0.2s; }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    #adminLoginBtn  { background: linear-gradient(135deg, #b71c1c, #e53935); color: #fff; }
+    #logoutBtn      { background: #f5f5f5; color: #666; border: 1px solid #eee; font-weight: 500; }
+    .btn-search     { background: linear-gradient(135deg, #1a237e, #3f51b5); color: #fff; }
+    .btn-export     { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: #fff; font-size: 0.82rem; padding: 8px; }
+    .btn-approve    { background: linear-gradient(135deg, #1b5e20, #43a047); color: #fff; font-size: 0.78rem; padding: 6px 10px; width: auto; margin: 0 4px 0 0; }
+    .btn-reject     { background: linear-gradient(135deg, #b71c1c, #e53935); color: #fff; font-size: 0.78rem; padding: 6px 10px; width: auto; margin: 0; }
+    .btn-add-emp    { background: linear-gradient(135deg, #e65100, #f57c00); color: #fff; }
+    .btn-refresh    { background: linear-gradient(135deg, #0d47a1, #1565c0); color: #fff; font-size: 0.8rem; padding: 7px; margin-bottom: 10px; }
+
+    #statusMsg { font-size: 0.82rem; color: #555; min-height: 18px; text-align: center; margin-top: 4px; }
+
+    .section-title { font-size: 0.88rem; font-weight: 800; color: #b71c1c; text-align: left; margin-bottom: 10px; }
+    .label { font-size: 0.8rem; color: #555; display: block; text-align: left; margin-bottom: 4px; font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.72rem; margin-top: 8px; }
+    th { background: #b71c1c; color: #fff; padding: 7px 5px; text-align: left; }
+    td { padding: 6px 5px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    tr:nth-child(even) td { background: #fafafa; }
+
+    .badge { padding: 2px 6px; border-radius: 5px; font-size: 0.65rem; font-weight: 700; white-space: nowrap; }
+    .badge-present   { background: #c8e6c9; color: #1b5e20; }
+    .badge-leave     { background: #ffe0b2; color: #e65100; }
+    .badge-weekoff   { background: #e1bee7; color: #4a148c; }
+    .badge-compoff   { background: #b2dfdb; color: #004d40; }
+    .badge-absent    { background: #ffcdd2; color: #b71c1c; }
+    .badge-shortduty { background: #fff9c4; color: #f57f17; }
+    .badge-pending   { background: #fff3e0; color: #e65100; }
+    .badge-approved  { background: #c8e6c9; color: #1b5e20; }
+    .badge-rejected  { background: #ffcdd2; color: #b71c1c; }
+
+    .photo-thumb { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; cursor: pointer; border: 2px solid #e0e0e0; }
+    .photo-thumb:hover { border-color: #b71c1c; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px; }
+    .sc { border-radius: 10px; padding: 10px 4px; text-align: center; }
+    .sc .num { font-size: 1.4rem; font-weight: 800; }
+    .sc .lbl { font-size: 0.6rem; font-weight: 700; margin-top: 2px; }
+    .sc-p  { background: #e8f5e9; color: #2e7d32; }
+    .sc-l  { background: #fff3e0; color: #e65100; }
+    .sc-wo { background: #f3e5f5; color: #6a1b9a; }
+    .sc-co { background: #e0f2f1; color: #00695c; }
+    .sc-a  { background: #ffebee; color: #b71c1c; }
+    .sc-sd { background: #fff8e1; color: #f57f17; }
+
+    .req-card { background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 12px; margin-bottom: 10px; text-align: left; font-size: 0.8rem; }
+    .req-card .req-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .req-card .req-name  { font-weight: 800; color: #1a237e; }
+    .req-card .req-date  { color: #888; font-size: 0.72rem; }
+    .req-card .req-times { display: flex; gap: 12px; color: #666; margin-bottom: 6px; }
+    .req-card .req-reason { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 8px; margin-bottom: 8px; color: #333; font-style: italic; }
+    .remark-input { font-size: 0.8rem; padding: 7px 10px; border-radius: 8px; border: 1.5px solid #e0e0e0; width: 100%; margin-bottom: 8px; font-family: inherit; }
+    .remark-input:focus { outline: none; border-color: #b71c1c; }
+
+    .loading-spinner { color: #aaa; font-size: 0.85rem; padding: 24px; text-align: center; }
+    .empty-msg { color: #bbb; font-size: 0.85rem; padding: 24px; text-align: center; }
+
+    .date-filter-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .date-filter-row input { margin-bottom: 0; }
+    .date-filter-row button { width: auto; padding: 10px 14px; margin-bottom: 0; }
+
+    #popupOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 999; justify-content: center; align-items: center; }
+    #popupOverlay.show { display: flex; }
+    #popupBox { background: #fff; border-radius: 20px; padding: 28px 22px; text-align: center; width: 290px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); animation: popIn 0.3s ease; }
+    @keyframes popIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    #popupIcon  { font-size: 2.5rem; margin-bottom: 6px; }
+    #popupTitle { font-size: 1rem; font-weight: 800; color: #b71c1c; margin-bottom: 6px; }
+    #popupMsg   { font-size: 0.82rem; color: #555; margin-bottom: 16px; line-height: 1.5; white-space: pre-line; }
+    #popupBtn   { background: linear-gradient(135deg, #b71c1c, #e53935); color: #fff; border: none; border-radius: 10px; padding: 10px 28px; font-size: 0.9rem; cursor: pointer; font-weight: 700; width: auto; }
+
+    .scroll-table { max-height: 400px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<!-- POPUP -->
+<div id="popupOverlay">
+  <div id="popupBox">
+    <div id="popupIcon">✅</div>
+    <div id="popupTitle">Done!</div>
+    <div id="popupMsg"></div>
+    <button id="popupBtn" onclick="closePopup()">OK</button>
+  </div>
+</div>
+
+<div class="card">
+  <!-- LOGIN -->
+  <div id="loginDiv">
+    <div class="logo">🔐</div>
+    <h2>Vault Kicks</h2>
+    <div class="subtitle">Admin Panel</div>
+    <input type="text"     id="adminId"  placeholder="Admin ID" autocomplete="username">
+    <input type="password" id="adminPwd" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter') adminLogin()">
+    <button id="adminLoginBtn" onclick="adminLogin()">🔐 Admin Login</button>
+    <div id="statusMsg"></div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminDiv" style="display:none;">
+    <div class="logo">👟</div>
+    <h2>Vault Kicks — Admin</h2>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('daily')">📅 Daily</button>
+      <button class="tab" onclick="switchTab('requests')">📝 Requests</button>
+      <button class="tab" onclick="switchTab('employees')">👥 Staff</button>
+      <button class="tab" onclick="switchTab('reports')">📊 Reports</button>
+    </div>
+
+    <!-- TAB: DAILY ATTENDANCE -->
+    <div id="tab-daily" class="tab-content active">
+      <div class="section-title">📅 Daily Attendance</div>
+      <div class="date-filter-row">
+        <input type="date" id="dailyDate" style="flex:1;">
+        <button class="btn-search" onclick="loadDailyAttendance()" style="width:auto;padding:10px 14px;margin-bottom:0;">🔍</button>
+      </div>
+      <button class="btn-export" onclick="exportDailyCSV()">⬇️ Export CSV</button>
+      <div class="summary-grid" id="dailySummary" style="margin-top:10px;"></div>
+      <div class="scroll-table" id="dailyTable"><div class="loading-spinner">Select a date and search</div></div>
+    </div>
+
+    <!-- TAB: REGULARIZE REQUESTS -->
+    <div id="tab-requests" class="tab-content">
+      <div class="section-title">📝 Pending Regularization Requests</div>
+      <button class="btn-refresh" onclick="loadPendingRequests(true)">🔄 Refresh</button>
+      <div id="pendingList"><div class="loading-spinner">Loading…</div></div>
+    </div>
+
+    <!-- TAB: EMPLOYEES -->
+    <div id="tab-employees" class="tab-content">
+      <div class="section-title">👥 Add New Employee</div>
+      <label class="label">Employee ID (Login ID)</label>
+      <input type="text" id="newEmpId" placeholder="e.g. EMP045">
+      <label class="label">Password</label>
+      <input type="text" id="newEmpPwd" placeholder="e.g. vault@123">
+      <label class="label">Full Name</label>
+      <input type="text" id="newEmpName" placeholder="e.g. Rahul Sharma">
+      <label class="label">Department</label>
+      <input type="text" id="newEmpDept" placeholder="e.g. Sales">
+      <button class="btn-add-emp" onclick="addEmployee()">➕ Add Employee</button>
+      <div id="empMsg" style="font-size:0.82rem;color:#555;margin-top:6px;min-height:16px;text-align:center;"></div>
+      <hr style="border:none;border-top:1px solid #f0f0f0;margin:14px 0;">
+      <div class="section-title">👥 All Employees</div>
+      <button class="btn-refresh" onclick="loadEmployees(true)">🔄 Refresh</button>
+      <div id="empList"><div class="loading-spinner">Loading…</div></div>
+    </div>
+
+    <!-- TAB: REPORTS -->
+    <div id="tab-reports" class="tab-content">
+      <div class="section-title">📊 Monthly Report</div>
+      <label class="label">Select Month</label>
+      <input type="month" id="reportMonth">
+      <button class="btn-search" onclick="loadMonthReport()">📊 Generate Report</button>
+      <button class="btn-export" onclick="exportMonthCSV()" style="margin-top:4px;">⬇️ Export Monthly CSV</button>
+      <div id="reportSummary" style="margin-top:10px;"></div>
+      <div class="scroll-table" id="reportTable"></div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:10px 0 8px 0;">
+    <button id="logoutBtn" onclick="adminLogout()">🚪 Logout</button>
+  </div>
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════
+  // CONFIG
+  // ═══════════════════════════════════════════════════════════════
+  const SCRIPT_URL = "APPS_SCRIPT_URL_HERE"; // Same URL as employee HTML
+
+  // Admin credentials (change these!)
+  const ADMIN_USERS = {
+    "admin":      "vaultkicks@admin",
+    "hradmin":    "hr@vault2024",
+    "superadmin": "super@vault"
+  };
+  // ═══════════════════════════════════════════════════════════════
+
+  let allAttData   = [];
+  let pendingReqs  = [];
+  let allEmployees = [];
+  let currentAdmin = "";
+
+  function setStatus(msg) { document.getElementById("statusMsg").textContent = msg; }
+  function showPopup(icon, title, msg) {
+    document.getElementById("popupIcon").textContent  = icon;
+    document.getElementById("popupTitle").textContent = title;
+    document.getElementById("popupMsg").textContent   = msg;
+    document.getElementById("popupOverlay").classList.add("show");
+  }
+  function closePopup() { document.getElementById("popupOverlay").classList.remove("show"); }
+
+  function callScript(action, data, callback) {
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(Object.assign({ action }, data)),
+      headers: { "Content-Type": "text/plain" }
+    })
+    .then(r => r.json())
+    .then(callback)
+    .catch(err => { setStatus("❌ Error: " + err.message); });
+  }
+
+  // ── Admin Login ───────────────────────────────
+  function adminLogin() {
+    const id  = document.getElementById("adminId").value.trim();
+    const pwd = document.getElementById("adminPwd").value.trim();
+    if (!id || !pwd) { setStatus("⚠️ Enter credentials."); return; }
+    if (ADMIN_USERS[id] && ADMIN_USERS[id] === pwd) {
+      currentAdmin = id;
+      document.getElementById("loginDiv").style.display = "none";
+      document.getElementById("adminDiv").style.display = "block";
+      const today = new Date().toISOString().split("T")[0];
+      document.getElementById("dailyDate").value  = today;
+      document.getElementById("reportMonth").value = today.slice(0,7);
+      loadDailyAttendance();
+      loadPendingRequests(false);
+      loadEmployees(false);
+    } else {
+      setStatus("❌ Invalid admin credentials.");
+    }
+  }
+
+  function adminLogout() {
+    currentAdmin = ""; allAttData=[]; pendingReqs=[]; allEmployees=[];
+    document.getElementById("adminId").value="";
+    document.getElementById("adminPwd").value="";
+    document.getElementById("adminDiv").style.display="none";
+    document.getElementById("loginDiv").style.display="block";
+    setStatus("");
+  }
+
+  // ── Tabs ──────────────────────────────────────
+  function switchTab(tab) {
+    ["daily","requests","employees","reports"].forEach((t,i) => {
+      document.querySelectorAll(".tab")[i].classList.toggle("active", t===tab);
+      document.getElementById("tab-"+t).classList.toggle("active", t===tab);
+    });
+    if (tab==="requests")  loadPendingRequests(false);
+    if (tab==="employees") loadEmployees(false);
+  }
+
+  // ── Daily Attendance ──────────────────────────
+  function loadDailyAttendance() {
+    const date = document.getElementById("dailyDate").value;
+    if (!date) { showPopup("⚠️","Select Date","Please select a date first."); return; }
+    document.getElementById("dailyTable").innerHTML   = "<div class='loading-spinner'>Loading…</div>";
+    document.getElementById("dailySummary").innerHTML = "";
+    callScript("getAdminDaily", { date }, function(res) {
+      renderDailyTable(res.rows || [], date);
+    });
+  }
+
+  function renderDailyTable(rows, date) {
+    let present=0, leave=0, weekOff=0, compOff=0, shortDuty=0, absent=0;
+    rows.forEach(r => {
+      const s = (r.status||"").toLowerCase();
+      if (s==="present") present++;
+      else if (s==="leave") leave++;
+      else if (s==="week off") weekOff++;
+      else if (s==="comp off") compOff++;
+      else if (s==="short duty") shortDuty++;
+      else absent++;
+    });
+
+    document.getElementById("dailySummary").innerHTML = `
+      <div class="sc sc-p"><div class="num">${present}</div><div class="lbl">✅ Present</div></div>
+      <div class="sc sc-sd"><div class="num">${shortDuty}</div><div class="lbl">⚠️ Short</div></div>
+      <div class="sc sc-a"><div class="num">${absent}</div><div class="lbl">❌ Absent</div></div>
+      <div class="sc sc-l"><div class="num">${leave}</div><div class="lbl">🏖️ Leave</div></div>
+      <div class="sc sc-wo"><div class="num">${weekOff}</div><div class="lbl">📅 WO</div></div>
+      <div class="sc sc-co"><div class="num">${compOff}</div><div class="lbl">🎁 CO</div></div>
+    `;
+
+    if (rows.length === 0) {
+      document.getElementById("dailyTable").innerHTML = "<div class='empty-msg'>No records for this date.</div>";
+      return;
+    }
+    let html = `<table><thead><tr><th>Name</th><th>Status</th><th>In</th><th>Out</th><th>Hrs</th><th>📷</th></tr></thead><tbody>`;
+    rows.forEach(r => {
+      const s = (r.status||"").toLowerCase().replace(/\s/g,"");
+      const badge = `<span class="badge badge-${s}">${r.status||"-"}</span>`;
+      const photos = parsePhotos(r.photoUrl);
+      html += `<tr>
+        <td><strong>${r.name}</strong><br><span style="font-size:0.65rem;color:#aaa">${r.loginId}</span></td>
+        <td>${badge}</td>
+        <td>${r.inTime||"-"}</td>
+        <td>${r.outTime||"-"}</td>
+        <td>${r.hours||"-"}</td>
+        <td>${photos}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    document.getElementById("dailyTable").innerHTML = html;
+    // Store for export
+    window._dailyRows = rows;
+    window._dailyDate = date;
+  }
+
+  function parsePhotos(photoUrl) {
+    if (!photoUrl) return "-";
+    const parts = photoUrl.split(" | OUT: ");
+    let html = "";
+    if (parts[0] && parts[0].startsWith("http")) {
+      html += `<a href="${parts[0]}" target="_blank"><img class="photo-thumb" src="${parts[0]}" title="Clock In Photo"></a>`;
+    }
+    if (parts[1] && parts[1].startsWith("http")) {
+      html += ` <a href="${parts[1]}" target="_blank"><img class="photo-thumb" src="${parts[1]}" title="Clock Out Photo"></a>`;
+    }
+    return html || "-";
+  }
+
+  function exportDailyCSV() {
+    const rows = window._dailyRows || [];
+    const date = window._dailyDate || "";
+    if (!rows.length) { showPopup("⚠️","No Data","Load daily attendance first."); return; }
+    let csv = "Date,LoginID,Name,Status,In Time,Out Time,Hours\n";
+    rows.forEach(r => {
+      csv += [date, r.loginId, r.name, r.status||"", r.inTime||"", r.outTime||"", r.hours||""].join(",") + "\n";
+    });
+    downloadCSV(csv, "VaultKicks_Attendance_" + date + ".csv");
+  }
+
+  // ── Pending Requests ──────────────────────────
+  function loadPendingRequests(force) {
+    if (pendingReqs.length > 0 && !force) { renderPendingRequests(); return; }
+    document.getElementById("pendingList").innerHTML = "<div class='loading-spinner'>Loading…</div>";
+    callScript("getAdminRequests", {}, function(res) {
+      pendingReqs = (res.requests || []).filter(r => r.status === "Pending");
+      renderPendingRequests();
+    });
+  }
+
+  function renderPendingRequests() {
+    const el = document.getElementById("pendingList");
+    if (pendingReqs.length === 0) {
+      el.innerHTML = "<div class='empty-msg'>✅ No pending requests!</div>";
+      return;
+    }
+    let html = `<p style="font-size:0.78rem;color:#e65100;margin-bottom:10px;font-weight:700;">⚠️ ${pendingReqs.length} pending request(s)</p>`;
+    pendingReqs.forEach((r, idx) => {
+      html += `<div class="req-card">
+        <div class="req-header">
+          <div>
+            <div class="req-name">👤 ${r.name}</div>
+            <div class="req-date">📅 ${r.attDate} &nbsp; <span class="badge badge-pending">Pending</span></div>
+          </div>
+          <div style="font-size:0.68rem;color:#aaa;">${r.requestDate}</div>
+        </div>
+        <div class="req-times">
+          <span>⏰ In: ${r.inTime||"-"}</span>
+          <span>Out: ${r.outTime||"-"}</span>
+          <span>⏱ ${r.hours||"-"} hrs</span>
+        </div>
+        <div class="req-reason">💬 "${r.reason}"</div>
+        <input class="remark-input" id="remark_${idx}" placeholder="Admin remark (optional)…">
+        <div style="display:flex;gap:6px;">
+          <button class="btn-approve" onclick="handleRequest('${r.requestId}', true, ${idx})">✅ Approve</button>
+          <button class="btn-reject"  onclick="handleRequest('${r.requestId}', false, ${idx})">❌ Reject</button>
+        </div>
+      </div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  function handleRequest(requestId, approved, idx) {
+    const remark = document.getElementById("remark_" + idx).value.trim();
+    if (!approved && !remark) {
+      showPopup("⚠️","Remark Required","Please add a remark when rejecting.");
+      return;
+    }
+    callScript("adminHandleRequest", { requestId, approved, remark }, function(res) {
+      if (res.status) {
+        showPopup(approved?"✅":"❌", approved?"Approved!":"Rejected!", res.message||"Done.");
+        pendingReqs = []; loadPendingRequests(true);
+      } else {
+        showPopup("❌","Error", res.message||"Something went wrong.");
+      }
+    });
+  }
+
+  // ── Employees ─────────────────────────────────
+  function loadEmployees(force) {
+    if (allEmployees.length > 0 && !force) { renderEmployees(); return; }
+    document.getElementById("empList").innerHTML = "<div class='loading-spinner'>Loading…</div>";
+    callScript("getAdminEmployees", {}, function(res) {
+      allEmployees = res.employees || [];
+      renderEmployees();
+    });
+  }
+
+  function renderEmployees() {
+    const el = document.getElementById("empList");
+    if (allEmployees.length === 0) { el.innerHTML = "<div class='empty-msg'>No employees found.</div>"; return; }
+    let html = `<table><thead><tr><th>ID</th><th>Name</th><th>Dept</th><th>Active</th></tr></thead><tbody>`;
+    allEmployees.forEach(e => {
+      const active = e.active.toUpperCase()==="YES"
+        ? '<span class="badge badge-approved">✅ Yes</span>'
+        : '<span class="badge badge-rejected">❌ No</span>';
+      html += `<tr><td>${e.loginId}</td><td>${e.name}</td><td>${e.department}</td><td>${active}</td></tr>`;
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function addEmployee() {
+    const id   = document.getElementById("newEmpId").value.trim();
+    const pwd  = document.getElementById("newEmpPwd").value.trim();
+    const name = document.getElementById("newEmpName").value.trim();
+    const dept = document.getElementById("newEmpDept").value.trim();
+    const msgEl = document.getElementById("empMsg");
+    if (!id||!pwd||!name) { msgEl.textContent="⚠️ ID, Password, and Name are required."; msgEl.style.color="#c62828"; return; }
+    msgEl.textContent="Adding…"; msgEl.style.color="#555";
+    callScript("adminAddEmployee", { empId:id, password:pwd, name, department:dept||"General" }, function(res) {
+      msgEl.textContent = res.message||"";
+      if (res.status) {
+        msgEl.style.color="#2e7d32";
+        document.getElementById("newEmpId").value="";
+        document.getElementById("newEmpPwd").value="";
+        document.getElementById("newEmpName").value="";
+        document.getElementById("newEmpDept").value="";
+        allEmployees=[]; loadEmployees(true);
+        showPopup("✅","Employee Added!", name + " added successfully!\nID: " + id);
+      } else { msgEl.style.color="#c62828"; }
+    });
+  }
+
+  // ── Monthly Report ────────────────────────────
+  function loadMonthReport() {
+    const month = document.getElementById("reportMonth").value;
+    if (!month) { showPopup("⚠️","Select Month","Please select a month."); return; }
+    document.getElementById("reportTable").innerHTML   = "<div class='loading-spinner'>Loading…</div>";
+    document.getElementById("reportSummary").innerHTML = "";
+    callScript("getAdminMonthReport", { month }, function(res) {
+      renderMonthReport(res.report || [], month);
+    });
+  }
+
+  function renderMonthReport(report, month) {
+    window._reportData  = report;
+    window._reportMonth = month;
+    if (report.length === 0) {
+      document.getElementById("reportTable").innerHTML = "<div class='empty-msg'>No data for this month.</div>";
+      return;
+    }
+    let html = `<table><thead><tr><th>Name</th><th>✅P</th><th>⚠️SD</th><th>❌A</th><th>🏖️L</th><th>📅WO</th><th>🎁CO</th></tr></thead><tbody>`;
+    report.forEach(r => {
+      html += `<tr>
+        <td><strong>${r.name}</strong><br><span style="font-size:0.63rem;color:#aaa">${r.loginId}</span></td>
+        <td>${r.present}</td><td>${r.shortDuty}</td><td>${r.absent}</td>
+        <td>${r.leave}</td><td>${r.weekOff}</td><td>${r.compOff}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    document.getElementById("reportTable").innerHTML = html;
+  }
+
+  function exportMonthCSV() {
+    const report = window._reportData  || [];
+    const month  = window._reportMonth || "";
+    if (!report.length) { showPopup("⚠️","No Data","Generate report first."); return; }
+    let csv = "LoginID,Name,Present,ShortDuty,Absent,Leave,WeekOff,CompOff\n";
+    report.forEach(r => {
+      csv += [r.loginId,r.name,r.present,r.shortDuty,r.absent,r.leave,r.weekOff,r.compOff].join(",") + "\n";
+    });
+    downloadCSV(csv, "VaultKicks_Report_" + month + ".csv");
+  }
+
+  function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
