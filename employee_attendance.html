@@ -323,14 +323,13 @@
     const today    = toDateStr(now);
     const timeStr  = now.getHours().toString().padStart(2,"0") + now.getMinutes().toString().padStart(2,"0") + now.getSeconds().toString().padStart(2,"0");
     const safeName = currentName.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
-    // Full nested path — Cloudinary creates folders automatically from public_id slashes
-    const publicId = "vaultkicks-attendance/" + today + "/" + safeName + "_" + type + "_" + timeStr;
+    const fileName = safeName + "_" + type + "_" + timeStr;
 
     const formData = new FormData();
-    formData.append("file", blob, safeName + "_" + type + ".jpg");
+    formData.append("file", blob, fileName + ".jpg");
     formData.append("upload_preset", CLOUDINARY_PRESET);
-    formData.append("public_id", publicId);
-    // NOTE: Do NOT send "folder" field — public_id handles the full path
+    formData.append("asset_folder", "vaultkicks-attendance/" + today);
+    formData.append("display_name", fileName);
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
