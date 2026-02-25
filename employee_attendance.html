@@ -318,13 +318,18 @@
   }
 
   // ── Upload photo to Cloudinary ────────────────
-  async function uploadToCloudinary(blob, fileName) {
-    const today = toDateStr(new Date());
+  async function uploadToCloudinary(blob, type) {
+    const now   = new Date();
+    const today = toDateStr(now);
+    const timeStr = now.getHours().toString().padStart(2,"0") + now.getMinutes().toString().padStart(2,"0") + now.getSeconds().toString().padStart(2,"0");
+    const safeName = currentName.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
+    // Unique public_id: folder/date/Name_IN_HHMMSS  (no clash ever)
+    const publicId = "vaultkicks-attendance/" + today + "/" + safeName + "_" + type + "_" + timeStr;
+
     const formData = new FormData();
-    formData.append("file", blob, fileName);
+    formData.append("file", blob, safeName + "_" + type + ".jpg");
     formData.append("upload_preset", CLOUDINARY_PRESET);
-    formData.append("folder", "vaultkicks-attendance/" + today);
-    formData.append("public_id", fileName.replace(".jpg",""));
+    formData.append("public_id", publicId);
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
@@ -449,10 +454,7 @@
     getLocation(async function(lat, lng) {
       try {
         setStatus("☁️ Uploading photo…");
-        const now = new Date();
-        const timeStr = now.toTimeString().slice(0,5).replace(":","h");
-        const fileName = currentName.replace(/\s+/g,"_") + "_IN_" + timeStr + ".jpg";
-        const photoUrl = await uploadToCloudinary(photoBlob, fileName);
+        const photoUrl = await uploadToCloudinary(photoBlob, "IN");
 
         setStatus("⏳ Clocking In…");
         callScript("clockIn", { loginId: currentUser, name: currentName, lat, lng, photoUrl }, function(res) {
@@ -460,7 +462,7 @@
           const msg = res.message || "";
           if (msg.includes("Successful")) {
             setStatus(""); myData = [];
-            showPopup("✅","Clock In Successful!","Attendance recorded.\nTime: " + now.toLocaleTimeString(), false);
+            showPopup("✅","Clock In Successful!","Attendance recorded.\nTime: " + new Date().toLocaleTimeString(), false);
             retakePhoto();
           } else { setStatus("⚠️ " + msg); }
         });
@@ -479,10 +481,7 @@
     getLocation(async function(lat, lng) {
       try {
         setStatus("☁️ Uploading photo…");
-        const now = new Date();
-        const timeStr = now.toTimeString().slice(0,5).replace(":","h");
-        const fileName = currentName.replace(/\s+/g,"_") + "_OUT_" + timeStr + ".jpg";
-        const photoUrl = await uploadToCloudinary(photoBlob, fileName);
+        const photoUrl = await uploadToCloudinary(photoBlob, "OUT");
 
         setStatus("⏳ Clocking Out…");
         callScript("clockOut", { loginId: currentUser, lat, lng, photoUrl }, function(res) {
@@ -496,7 +495,7 @@
                 "You worked only " + res.hours + " hrs today.\nRequired: 9 hours.\n\nIn: " + res.inTime + "\nOut: " + res.outTime + "\n\nSubmit a regularization request?",
                 true);
             } else {
-              showPopup("🔴","Clock Out Successful!","Departure recorded.\nTime: " + now.toLocaleTimeString() + "\nHours: " + res.hours + " hrs", false);
+              showPopup("🔴","Clock Out Successful!","Departure recorded.\nTime: " + new Date().toLocaleTimeString() + "\nHours: " + res.hours + " hrs", false);
             }
             retakePhoto();
           } else { setStatus("⚠️ " + msg); }
