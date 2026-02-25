@@ -324,12 +324,14 @@
     const timeStr = now.getHours().toString().padStart(2,"0") + now.getMinutes().toString().padStart(2,"0") + now.getSeconds().toString().padStart(2,"0");
     const safeName = currentName.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
     const fileName = safeName + "_" + type + "_" + timeStr;
+    // Full path as public_id creates nested folders in Cloudinary
+    const fullPath = "vaultkicks-attendance/" + today + "/" + fileName;
 
     const formData = new FormData();
     formData.append("file", blob, fileName + ".jpg");
     formData.append("upload_preset", CLOUDINARY_PRESET);
-    formData.append("folder", "vaultkicks-attendance/" + today);
-    formData.append("public_id", fileName);   // just filename, folder handles path
+    formData.append("public_id", fullPath);
+    // Do NOT send folder field — let public_id handle the full path
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
@@ -337,7 +339,7 @@
     );
     const json = await res.json();
     if (json.secure_url) return json.secure_url;
-    throw new Error("Cloudinary upload failed: " + JSON.stringify(json));
+    throw new Error("Upload failed: " + (json.error ? json.error.message : JSON.stringify(json)));
   }
 
   // ── Tabs ──────────────────────────────────────
@@ -402,22 +404,32 @@
   // ── Snap / Retake ─────────────────────────────
   function snapPhoto() {
     const video = document.getElementById("video");
-    if (!video.videoWidth) { setStatus("⚠️ Camera not ready, please wait."); return; }
-    const canvas = document.createElement("canvas");
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    canvas.toBlob(function(blob) {
-      photoBlob = blob;
-      const url = URL.createObjectURL(blob);
-      document.getElementById("photoPreview").src           = url;
-      document.getElementById("photoPreview").style.display = "block";
-      document.getElementById("video").style.display        = "none";
-      document.getElementById("snapBtn").style.display      = "none";
-      document.getElementById("retakeBtn").style.display    = "block";
-      showInfo("✅ Photo captured! Now click Clock In or Clock Out.");
-      setStatus("");
-    }, "image/jpeg", 0.75);
+    if (!video.videoWidth || video.readyState < 2) {
+      setStatus("⚠️ Camera not ready, please wait a moment.");
+      return;
+    }
+    // Small delay to ensure frame is rendered
+    setTimeout(function() {
+      const canvas = document.createElement("canvas");
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      canvas.toBlob(function(blob) {
+        if (!blob || blob.size < 5000) {
+          setStatus("⚠️ Photo capture failed — camera not ready. Please wait and try again.");
+          return;
+        }
+        photoBlob = blob;
+        const url = URL.createObjectURL(blob);
+        document.getElementById("photoPreview").src           = url;
+        document.getElementById("photoPreview").style.display = "block";
+        document.getElementById("video").style.display        = "none";
+        document.getElementById("snapBtn").style.display      = "none";
+        document.getElementById("retakeBtn").style.display    = "block";
+        showInfo("✅ Photo captured! Now click Clock In or Clock Out.");
+        setStatus("");
+      }, "image/jpeg", 0.85);
+    }, 300);
   }
 
   function retakePhoto() {
