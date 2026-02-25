@@ -253,7 +253,7 @@
   // ═══════════════════════════════════════════════
   // CONFIG — Replace with your values
   // ═══════════════════════════════════════════════
-  const SCRIPT_URL      = "https://script.google.com/macros/s/AKfycbw5xx78h1_gA82hcHODT3YegvXn4kTq5QyW3KjIavuTXL4hbeG1FzOJ5gGfB_BsjDxcwg/exec";       // Step 2 mein milega
+  const SCRIPT_URL      = "APPS_SCRIPT_URL_HERE";       // Step 2 mein milega
   const CLOUDINARY_CLOUD = "drjgoxwfu";
   const CLOUDINARY_PRESET= "vaultkicks_attendance";
   // ═══════════════════════════════════════════════
@@ -319,17 +319,17 @@
 
   // ── Upload photo to Cloudinary ────────────────
   async function uploadToCloudinary(blob, type) {
-    const now   = new Date();
-    const today = toDateStr(now);
+    const now     = new Date();
+    const today   = toDateStr(now);
     const timeStr = now.getHours().toString().padStart(2,"0") + now.getMinutes().toString().padStart(2,"0") + now.getSeconds().toString().padStart(2,"0");
     const safeName = currentName.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
-    // Unique public_id: folder/date/Name_IN_HHMMSS  (no clash ever)
-    const publicId = "vaultkicks-attendance/" + today + "/" + safeName + "_" + type + "_" + timeStr;
+    const fileName = safeName + "_" + type + "_" + timeStr;
 
     const formData = new FormData();
-    formData.append("file", blob, safeName + "_" + type + ".jpg");
+    formData.append("file", blob, fileName + ".jpg");
     formData.append("upload_preset", CLOUDINARY_PRESET);
-    formData.append("public_id", publicId);
+    formData.append("folder", "vaultkicks-attendance/" + today);
+    formData.append("public_id", fileName);   // just filename, folder handles path
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
@@ -453,29 +453,40 @@
     setStatus("📍 Getting location…");
     getLocation(async function(lat, lng) {
       try {
-        setStatus("☁️ Uploading photo…");
-        const photoUrl = await uploadToCloudinary(photoBlob, "IN");
-
-        setStatus("⏳ Clocking In…");
-        callScript("clockIn", { loginId: currentUser, name: currentName, lat, lng, photoUrl }, function(res) {
-          setBtns(false);
-          const msg = res.message || "";
-          if (msg.includes("Already clocked in") || msg.includes("already clocked in")) {
+        // Step 1: Check with server FIRST before uploading photo
+        setStatus("⏳ Checking status…");
+        callScript("checkClockIn", { loginId: currentUser }, async function(res) {
+          if (!res.canClockIn) {
+            setBtns(false);
             showPopup("⚠️","Already Clocked In!","You have already clocked in today!\n\nOnly one Clock In allowed per day.", false);
             retakePhoto(); return;
           }
-          if (res.status === true || msg.includes("Successful") || msg.includes("successful")) {
-            setStatus(""); myData = [];
-            showPopup("✅","Clock In Successful! 🎉","Attendance recorded.\nTime: " + new Date().toLocaleTimeString(), false);
-            retakePhoto();
-          } else {
-            showPopup("⚠️","Clock In Issue", msg || "Something went wrong. Please try again.", false);
-            retakePhoto();
+
+          // Step 2: Only upload photo if server says OK
+          try {
+            setStatus("☁️ Uploading photo…");
+            const photoUrl = await uploadToCloudinary(photoBlob, "IN");
+
+            setStatus("⏳ Clocking In…");
+            callScript("clockIn", { loginId: currentUser, name: currentName, lat, lng, photoUrl }, function(res2) {
+              setBtns(false);
+              if (res2.status === true) {
+                setStatus(""); myData = [];
+                showPopup("✅","Clock In Successful! 🎉","Attendance recorded.\nTime: " + new Date().toLocaleTimeString(), false);
+                retakePhoto();
+              } else {
+                showPopup("⚠️","Clock In Issue", res2.message || "Something went wrong. Please try again.", false);
+                retakePhoto();
+              }
+            });
+          } catch(err) {
+            setBtns(false);
+            setStatus("❌ Photo upload failed: " + err.message);
           }
         });
       } catch(err) {
         setBtns(false);
-        setStatus("❌ Photo upload failed: " + err.message);
+        setStatus("❌ Error: " + err.message);
       }
     });
   }
@@ -487,39 +498,53 @@
     setStatus("📍 Getting location…");
     getLocation(async function(lat, lng) {
       try {
-        setStatus("☁️ Uploading photo…");
-        const photoUrl = await uploadToCloudinary(photoBlob, "OUT");
-
-        setStatus("⏳ Clocking Out…");
-        callScript("clockOut", { loginId: currentUser, lat, lng, photoUrl }, function(res) {
-          setBtns(false);
-          const msg = res.message || "";
-          // Already clocked out
-          if (msg.includes("Already clocked out") || msg.includes("already clocked out")) {
-            showPopup("⚠️","Already Clocked Out!","You have already clocked out today!\n\nOnly one Clock Out allowed per day.", false);
+        // Step 1: Check with server FIRST before uploading photo
+        setStatus("⏳ Checking status…");
+        callScript("checkClockOut", { loginId: currentUser }, async function(res) {
+          if (!res.canClockOut) {
+            setBtns(false);
+            if (res.reason === "already_out") {
+              showPopup("⚠️","Already Clocked Out!","You have already clocked out today!\n\nOnly one Clock Out allowed per day.", false);
+            } else if (res.reason === "not_clocked_in") {
+              showPopup("⚠️","Not Clocked In!","Please Clock In first before clocking out.", false);
+            } else {
+              showPopup("⚠️","Cannot Clock Out", res.message || "Please try again.", false);
+            }
             retakePhoto(); return;
           }
-          // Already clocked in check (should not happen but safety)
-          if (res.status === true || msg.includes("Successful") || msg.includes("successful")) {
-            setStatus(""); myData = [];
-            if (res.shortDuty) {
-              lastShortDutyDate = toDateStr(new Date());
-              showPopup("⚠️","Short Duty Detected!",
-                "You worked only " + res.hours + " hrs today.\nRequired: 9 hours.\n\nIn: " + res.inTime + "\nOut: " + res.outTime + "\n\nDo you want to submit a regularization request?",
-                true);
-            } else {
-              showPopup("🔴","Clock Out Successful! 🎉","Departure recorded.\nTime: " + new Date().toLocaleTimeString() + "\nTotal Hours: " + res.hours + " hrs", false);
-            }
-            retakePhoto();
-          } else {
-            // Show whatever message came — helpful for debugging
-            showPopup("⚠️","Clock Out Issue", msg || "Something went wrong. Please try again.", false);
-            retakePhoto();
+
+          // Step 2: Only upload photo if server says OK
+          try {
+            setStatus("☁️ Uploading photo…");
+            const photoUrl = await uploadToCloudinary(photoBlob, "OUT");
+
+            setStatus("⏳ Clocking Out…");
+            callScript("clockOut", { loginId: currentUser, lat, lng, photoUrl }, function(res2) {
+              setBtns(false);
+              if (res2.status === true) {
+                setStatus(""); myData = [];
+                if (res2.shortDuty) {
+                  lastShortDutyDate = toDateStr(new Date());
+                  showPopup("⚠️","Short Duty Detected!",
+                    "You worked only " + res2.hours + " hrs today.\nRequired: 9 hours.\n\nIn: " + res2.inTime + "\nOut: " + res2.outTime + "\n\nDo you want to submit a regularization request?",
+                    true);
+                } else {
+                  showPopup("🔴","Clock Out Successful! 🎉","Departure recorded.\nTime: " + new Date().toLocaleTimeString() + "\nTotal Hours: " + res2.hours + " hrs", false);
+                }
+                retakePhoto();
+              } else {
+                showPopup("⚠️","Clock Out Issue", res2.message || "Something went wrong. Please try again.", false);
+                retakePhoto();
+              }
+            });
+          } catch(err) {
+            setBtns(false);
+            setStatus("❌ Photo upload failed: " + err.message);
           }
         });
       } catch(err) {
         setBtns(false);
-        setStatus("❌ Photo upload failed: " + err.message);
+        setStatus("❌ Error: " + err.message);
       }
     });
   }
