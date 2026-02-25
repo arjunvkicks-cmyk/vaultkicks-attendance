@@ -319,19 +319,18 @@
 
   // ── Upload photo to Cloudinary ────────────────
   async function uploadToCloudinary(blob, type) {
-    const now     = new Date();
-    const today   = toDateStr(now);
-    const timeStr = now.getHours().toString().padStart(2,"0") + now.getMinutes().toString().padStart(2,"0") + now.getSeconds().toString().padStart(2,"0");
+    const now      = new Date();
+    const today    = toDateStr(now);
+    const timeStr  = now.getHours().toString().padStart(2,"0") + now.getMinutes().toString().padStart(2,"0") + now.getSeconds().toString().padStart(2,"0");
     const safeName = currentName.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
-    const fileName = safeName + "_" + type + "_" + timeStr;
-    // Full path as public_id creates nested folders in Cloudinary
-    const fullPath = "vaultkicks-attendance/" + today + "/" + fileName;
+    // Full nested path — Cloudinary creates folders automatically from public_id slashes
+    const publicId = "vaultkicks-attendance/" + today + "/" + safeName + "_" + type + "_" + timeStr;
 
     const formData = new FormData();
-    formData.append("file", blob, fileName + ".jpg");
+    formData.append("file", blob, safeName + "_" + type + ".jpg");
     formData.append("upload_preset", CLOUDINARY_PRESET);
-    formData.append("public_id", fullPath);
-    // Do NOT send folder field — let public_id handle the full path
+    formData.append("public_id", publicId);
+    // NOTE: Do NOT send "folder" field — public_id handles the full path
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
@@ -728,8 +727,10 @@
     sorted.forEach(r => {
       const s=(r.status||"").toLowerCase().replace(/\s/g,"");
       const badge=`<span class="badge badge-${s}">${r.status||"-"}</span>`;
-      const photo = r.photoUrl ? `<a href="${r.photoUrl}" target="_blank"><img class="photo-thumb" src="${r.photoUrl}" alt="photo"></a>` : "-";
-      html+=`<tr><td>${r.date}</td><td>${badge}</td><td>${r.inTime||"-"}</td><td>${r.outTime||"-"}</td><td>${r.hours||"-"}</td><td>${photo}</td></tr>`;
+      const inPhoto  = r.photoInUrl  ? `<a href="${r.photoInUrl}"  target="_blank"><img class="photo-thumb" src="${r.photoInUrl}"  title="IN"  alt="IN"></a>`  : "";
+      const outPhoto = r.photoOutUrl ? `<a href="${r.photoOutUrl}" target="_blank"><img class="photo-thumb" src="${r.photoOutUrl}" title="OUT" alt="OUT"></a>` : "";
+      const photos   = (inPhoto || outPhoto) ? (inPhoto + " " + outPhoto) : "-";
+      html+=`<tr><td>${r.date}</td><td>${badge}</td><td>${r.inTime||"-"}</td><td>${r.outTime||"-"}</td><td>${r.hours||"-"}</td><td>${photos}</td></tr>`;
     });
     html+="</tbody></table>";
     document.getElementById("recordsTable").innerHTML=html;
