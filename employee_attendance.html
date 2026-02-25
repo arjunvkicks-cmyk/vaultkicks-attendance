@@ -460,11 +460,18 @@
         callScript("clockIn", { loginId: currentUser, name: currentName, lat, lng, photoUrl }, function(res) {
           setBtns(false);
           const msg = res.message || "";
-          if (msg.includes("Successful")) {
+          if (msg.includes("Already clocked in") || msg.includes("already clocked in")) {
+            showPopup("⚠️","Already Clocked In!","You have already clocked in today!\n\nOnly one Clock In allowed per day.", false);
+            retakePhoto(); return;
+          }
+          if (res.status === true || msg.includes("Successful") || msg.includes("successful")) {
             setStatus(""); myData = [];
-            showPopup("✅","Clock In Successful!","Attendance recorded.\nTime: " + new Date().toLocaleTimeString(), false);
+            showPopup("✅","Clock In Successful! 🎉","Attendance recorded.\nTime: " + new Date().toLocaleTimeString(), false);
             retakePhoto();
-          } else { setStatus("⚠️ " + msg); }
+          } else {
+            showPopup("⚠️","Clock In Issue", msg || "Something went wrong. Please try again.", false);
+            retakePhoto();
+          }
         });
       } catch(err) {
         setBtns(false);
@@ -487,18 +494,28 @@
         callScript("clockOut", { loginId: currentUser, lat, lng, photoUrl }, function(res) {
           setBtns(false);
           const msg = res.message || "";
-          if (msg.includes("Successful")) {
+          // Already clocked out
+          if (msg.includes("Already clocked out") || msg.includes("already clocked out")) {
+            showPopup("⚠️","Already Clocked Out!","You have already clocked out today!\n\nOnly one Clock Out allowed per day.", false);
+            retakePhoto(); return;
+          }
+          // Already clocked in check (should not happen but safety)
+          if (res.status === true || msg.includes("Successful") || msg.includes("successful")) {
             setStatus(""); myData = [];
             if (res.shortDuty) {
               lastShortDutyDate = toDateStr(new Date());
               showPopup("⚠️","Short Duty Detected!",
-                "You worked only " + res.hours + " hrs today.\nRequired: 9 hours.\n\nIn: " + res.inTime + "\nOut: " + res.outTime + "\n\nSubmit a regularization request?",
+                "You worked only " + res.hours + " hrs today.\nRequired: 9 hours.\n\nIn: " + res.inTime + "\nOut: " + res.outTime + "\n\nDo you want to submit a regularization request?",
                 true);
             } else {
-              showPopup("🔴","Clock Out Successful!","Departure recorded.\nTime: " + new Date().toLocaleTimeString() + "\nHours: " + res.hours + " hrs", false);
+              showPopup("🔴","Clock Out Successful! 🎉","Departure recorded.\nTime: " + new Date().toLocaleTimeString() + "\nTotal Hours: " + res.hours + " hrs", false);
             }
             retakePhoto();
-          } else { setStatus("⚠️ " + msg); }
+          } else {
+            // Show whatever message came — helpful for debugging
+            showPopup("⚠️","Clock Out Issue", msg || "Something went wrong. Please try again.", false);
+            retakePhoto();
+          }
         });
       } catch(err) {
         setBtns(false);
