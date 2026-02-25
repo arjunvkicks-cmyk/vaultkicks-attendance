@@ -329,7 +329,7 @@
     formData.append("file", blob, fileName + ".jpg");
     formData.append("upload_preset", CLOUDINARY_PRESET);
     formData.append("asset_folder", "vaultkicks-attendance/" + today);
-    formData.append("display_name", fileName);
+    formData.append("public_id", fileName);
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
