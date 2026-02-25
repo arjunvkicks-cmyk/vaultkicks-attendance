@@ -193,8 +193,7 @@
 
   // Admin credentials (change these!)
   const ADMIN_USERS = {
-    "Ajju6133":      "Arjun@123"
-  };
+    "Ajju6133":      "Arjun@123" };
   // ═══════════════════════════════════════════════════════════════
 
   let allAttData   = [];
@@ -301,7 +300,7 @@
     rows.forEach(r => {
       const s = (r.status||"").toLowerCase().replace(/\s/g,"");
       const badge = `<span class="badge badge-${s}">${r.status||"-"}</span>`;
-      const photos = parsePhotos(r.photoUrl);
+      const photos = parsePhotos(r);
       html += `<tr>
         <td><strong>${r.name}</strong><br><span style="font-size:0.65rem;color:#aaa">${r.loginId}</span></td>
         <td>${badge}</td>
@@ -318,16 +317,10 @@
     window._dailyDate = date;
   }
 
-  function parsePhotos(photoUrl) {
-    if (!photoUrl) return "-";
-    const parts = photoUrl.split(" | OUT: ");
+  function parsePhotos(r) {
     let html = "";
-    if (parts[0] && parts[0].startsWith("http")) {
-      html += `<a href="${parts[0]}" target="_blank"><img class="photo-thumb" src="${parts[0]}" title="Clock In Photo"></a>`;
-    }
-    if (parts[1] && parts[1].startsWith("http")) {
-      html += ` <a href="${parts[1]}" target="_blank"><img class="photo-thumb" src="${parts[1]}" title="Clock Out Photo"></a>`;
-    }
+    if (r.photoInUrl)  html += `<a href="${r.photoInUrl}"  target="_blank"><img class="photo-thumb" src="${r.photoInUrl}"  title="IN"></a>`;
+    if (r.photoOutUrl) html += ` <a href="${r.photoOutUrl}" target="_blank"><img class="photo-thumb" src="${r.photoOutUrl}" title="OUT"></a>`;
     return html || "-";
   }
 
